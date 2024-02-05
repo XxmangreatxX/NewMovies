@@ -3,9 +3,9 @@ const perPage = 10;
 
 async function loadMovieData(inTitle = null) {
   try {
-    const apiUrl = inTitle
-      ? `/api/movies?page=1&perPage=10&title=${inTitle}`
-      : `/api/movies?page=${+pageNumber}&perPage=${+perPage}`;
+    let url = inTitle
+    ? `${window.location.href}/api/movies?page=1&perPage=10&title=${inTitle}`
+    : `${window.location.href}api/movies?page=${+pageNumber}&perPage=${+perPage}`
 
     const response = await fetch(apiUrl);
     const data = await response.json();

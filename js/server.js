@@ -18,7 +18,7 @@ const MoviesDB = require('./MoviesDB.js');
 dotenv.config();
 
 const app = express();
-const HTTP_PORT = process.env.HTTP_PORT || 8080;
+const HTTP_PORT = process.env.HTTP_PORT || 3000;
 
 app.use(cors());
 app.use(express.json());

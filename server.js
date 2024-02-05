@@ -1,8 +1,19 @@
+/*********************************************************************************
+*  WEB422 – Assignment 1
+*  I declare that this assignment is my own work in accordance with Seneca  Academic Policy.  
+*  No part of this assignment has been copied manually or electronically from any other source
+*  (including web sites) or distributed to other students.
+* 
+*  Name: Oscar Li Student ID: 154348197 Date: January, 19, 2024
+*  Cyclic Link: https://tame-jade-flip-flops.cyclic.app
+*
+********************************************************************************/ 
+
 // Setup
 const express = require('express');
 const bodyParser = require('body-parser');
 const cors = require('cors');
-const MoviesDB = require("./modules/MoviesDB.js");
+const MoviesDB = require("./modules/moviesDB.js");
 const path = require('path');
 
 require('dotenv').config();
@@ -23,8 +34,8 @@ const HTTP_PORT = process.env.PORT || 8080;
 
 //envoking DB
 db.initialize(process.env.MONGODB_CONN_STRING).then(()=>{
-  app.listen(HTTP_PORT, () => {
-    console.log(`Server listening on port: ${HTTP_PORT}`);
+  app.listen(HTTP_PORT, ()=>{
+    console.log(`server listening on: ${HTTP_PORT}`);
   });
 }).catch((err)=>{
   console.log(err);
@@ -64,6 +75,7 @@ app.get('/api/movies', (req,res) =>{
     });
   }
 });
+
 // This route will accept a parameter that represents the id of the desired object ie: /api/movies/573a1391f29313caabcd956e
 // return a specific "Movie" object to client
 app.get('/api/movies/:id',function(req,res) {
@@ -103,3 +115,8 @@ app.delete('/api/movies/:id', (req,res) =>{
 app.use((req, res) => {
   res.status(404).send('Resource not found');
 });
+
+// Tell the app to start listening for requests
+// app.listen(HTTP_PORT, () => {
+//   console.log('Ready to handle requests on port ' + HTTP_PORT);
+// });

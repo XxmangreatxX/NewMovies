@@ -1,126 +1,94 @@
-// This will keep track of the current page that the user is viewing.
-var pageNumber = 1;
-//This will be a constant value that we will use to reference how many movie items we wish to view on each page of our application.
+let pageNumber = 1;
 const perPage = 10;
 
-function loadMovieData (inTitle = null){
-    //noticed that the search will not work if the page and perPage value are not default 1 and 10
-    //when the page was change to for example page=10, and we try searching for a movie. Result would return nothing
-    let url = inTitle ? `${window.location.href}api/movies?page=1&perPage=10&title=${inTitle}` : `${window.location.href}api/movies?page=${+pageNumber}&perPage=${+perPage}`;
-    
-    //add/remove d-none from class=pagination
-    if (inTitle){
-        const cList = document.getElementById("pagination").classList;
-        cList.add("d-none");
-    } else {
-        const cList = document.getElementById("pagination").classList;
-        cList.remove("d-none");
-    }
+async function loadMovieData(inTitle = null) {
+  try {
+    let url = inTitle
+    ? `${window.location.href}/api/movies?page=1&perPage=10&title=${inTitle}`
+    : `${window.location.href}api/movies?page=${+pageNumber}&perPage=${+per}`
 
-    fetch(url)
-        .then(res => res.json()).then(data =>{
+    const response = await fetch(apiUrl);
+    const data = await response.json();
 
-            //format data for row
-            let row = `
-            ${data.map(post =>(
-                `<tr data-id=${post._id}>
-                    <td>${post.year}</td>
-                    <td>${post.title}</td>
-                    <td>${post.plot ? post.plot : "N/A"}</td>
-                    <td>${post.rated ? post.rated : "N/A"}</td>
-                    <td>${Math.floor(post.runtime/60)+ ":" + (post.runtime%60).toString().padStart(2,'0')}</td>
-                </tr>`
-            )).join('')}`;
-            
-            //populate table with rows
-            document.querySelector('#moviesTable tbody').innerHTML = row;
-            
-            //update the current page number for the pagination
-            document.querySelector('#current-page').innerHTML = pageNumber;
-            
-            //for each row on the current table, check for click event
-            //if clicked modal will pop up with more details on clicked movie
-            document.querySelectorAll('#moviesTable tbody tr').forEach(row => {
-                row.addEventListener("click", c =>{
-                    let clicked = row.getAttribute("data-id");
-                    
-                    fetch(`${window.location.href}api/movies/${clicked}`)
-                    .then(res => res.json())
-                    .then(data => {
-                    
-                        document.querySelector("#detailsModal .modal-title").innerHTML = data.title;
+    const paginationControl = document.querySelector('.pagination');
+    paginationControl.classList.toggle('d-none', inTitle !== null);
 
-                        //format data for modal with movie data
-                        let movieDesc = `
-                            <img class="img-fluid w-100" src=${data.poster}><br><br>
-                            <strong>Directed By:</strong> ${data.directors.join(', ')}<br><br>
-                            <p>${data.fullplot ? data.fullplot : "N/A"}</p>
-                            <strong>Cast:</strong> ${data.cast ? data.cast.join(', ') : "N/A"}<br><br>
-                            <strong>Awards:</strong> ${data.awards.text}<br>
-                            <strong>IMDB Rating:</strong> ${data.imdb.rating} (${data.imdb.votes} votes)
-                        `;
+    const tableRows = data.map((movie) => `
+      <tr data-id="${movie._id}">
+        <td>${movie.year}</td>
+        <td>${movie.title}</td>
+        <td>${movie.plot || 'N/A'}</td>
+        <td>${movie.rated || 'N/A'}</td>
+        <td>${Math.floor(movie.runtime / 60)}:${(movie.runtime % 60).toString().padStart(2, '0')}</td>
+      </tr>
+    `).join('');
 
-                        document.querySelector("#detailsModal .modal-body").innerHTML = movieDesc;
+    const tableBody = document.querySelector('#moviesTable tbody');
+    tableBody.innerHTML = tableRows;
 
-                        let modal = new bootstrap.Modal(document.getElementById("detailsModal"), {
-                            backdrop: "static",
-                            keyboard: false,
-                            focus: true,
-                        });
+    const currentPageDisplay = document.querySelector('#current-page');
+    currentPageDisplay.textContent = pageNumber;
 
-                        modal.show();
-                    });
+    const tableRowsArray = Array.from(document.querySelectorAll('#moviesTable tbody tr'));
+    tableRowsArray.forEach((row) => {
+      row.addEventListener('click', async () => {
+        const movieId = row.getAttribute('data-id');
 
-                });
-            });
-        });
-}
+        const movieResponse = await fetch(`/api/movies/${movieId}`);
+        const selectedMovie = await movieResponse.json();
 
-// Button that will direct to the previous page
-function previousButton(){
-    document.getElementById('previous-page')
-    .addEventListener("click", c =>{
-        if (pageNumber === 1){
-            loadMovieData();
-        } else{
-            pageNumber = pageNumber - 1;
-            loadMovieData();
-        }
+        const modalTitle = document.querySelector('#modalTitle');
+        const modalBody = document.querySelector('#modalBody');
+
+        modalTitle.textContent = selectedMovie.title;
+
+        const modalContent = `
+          <img class="img-fluid w-100" src="${selectedMovie.poster}">
+          <br><br>
+          <strong>Directed By:</strong> ${selectedMovie.directors.join(', ')}
+          <br><br>
+          <p>${selectedMovie.fullplot}</p>
+          <strong>Cast:</strong> ${selectedMovie.cast.join(', ') || 'N/A'}
+          <br><br>
+          <strong>Awards:</strong> ${selectedMovie.awards.text}
+          <br>
+          <strong>IMDB Rating:</strong> ${selectedMovie.imdb.rating} (${selectedMovie.imdb.votes} votes)
+        `;
+
+        modalBody.innerHTML = modalContent;
+
+        const detailsModal = new bootstrap.Modal(document.getElementById('detailsModal'));
+        detailsModal.show();
+      });
     });
+  } catch (error) {
+    console.error('Error loading movie data:', error);
+  }
 }
 
-// Button that will direct to the next page
-function nextButton(){
-    document.getElementById('next-page')
-    .addEventListener("click", c =>{
-        pageNumber = pageNumber + 1;
-        loadMovieData();
-    });
-}
-
-// Button that will direct to specific title
-function searchForm(){
-    document.querySelector("#searchForm").addEventListener('submit', event => {
-        // prevent the form from from 'officially' submitting
-        event.preventDefault();
-        // populate the posts table with the title value
-        loadMovieData(document.querySelector("#title").value);
-    });
-}
-
-// Button that will clear the search bar
-function clearForm(){
-    document.getElementById("clearForm").addEventListener("click", function(){
-        document.getElementById("title").value = "";
-        // populate the posts table with the title value
-        loadMovieData();
-    })
-}
-
-document.addEventListener('DOMContentLoaded', function() {
+document.getElementById('previous-page').addEventListener('click', () => {
+  if (pageNumber > 1) {
+    pageNumber--;
     loadMovieData();
-    previousButton();
-    nextButton();
-    searchForm();
-    clearForm();
-})
+  }
+});
+
+document.getElementById('next-page').addEventListener('click', () => {
+  pageNumber++;
+  loadMovieData();
+});
+
+document.getElementById('searchForm').addEventListener('submit', (event) => {
+  event.preventDefault();
+  const title = document.getElementById('title').value;
+  loadMovieData(title);
+});
+
+document.getElementById('clearForm').addEventListener('click', () => {
+  document.getElementById('title').value = '';
+  loadMovieData();
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+  loadMovieData();
+});

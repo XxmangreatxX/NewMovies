@@ -28,9 +28,7 @@ const db = new MoviesDB();
 db.initialize(process.env.MONGODB_CONN_STRING)
   .then(() => {
     console.log('Connected to MongoDB');
-    app.get('/', (req, res) => {
-      res.json({ message: 'API Listening' });
-    });
+    app.use(express.static('main'));
 
     app.post('/api/movies', async (req, res) => {
       try {

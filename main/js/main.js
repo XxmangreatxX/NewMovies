@@ -1,126 +1,108 @@
-// This will keep track of the current page that the user is viewing.
-var pageNumber = 1;
-//This will be a constant value that we will use to reference how many movie items we wish to view on each page of our application.
+let page = 1;
 const perPage = 10;
+let searchName = null;
 
-function loadMovieData (inTitle = null){
-    //noticed that the search will not work if the page and perPage value are not default 1 and 10
-    //when the page was change to for example page=10, and we try searching for a movie. Result would return nothing
-    let url = inTitle ? `${window.location.href}api/movies?page=1&perPage=10&title=${inTitle}` : `${window.location.href}api/movies?page=${+pageNumber}&perPage=${+perPage}`;
-    
-    //add/remove d-none from class=pagination
-    if (inTitle){
-        const cList = document.getElementById("pagination").classList;
-        cList.add("d-none");
+function loadListingData() {
+
+    let url = "";
+
+    if (searchName) {
+        url = `http://localhost:8080/api/listings?page=${page}&perPage=${perPage}&name=${searchName}`
     } else {
-        const cList = document.getElementById("pagination").classList;
-        cList.remove("d-none");
+        url = `http://localhost:8080/api/listings?page=${page}&perPage=${perPage}`;
     }
 
     fetch(url)
-        .then(res => res.json()).then(data =>{
+        .then(res =>{
+            return res.ok ? res.json() : Promise.reject(res.status);
+        })  
+        .then(data => {
 
-            //format data for row
-            let row = `
-            ${data.map(post =>(
-                `<tr data-id=${post._id}>
-                    <td>${post.year}</td>
-                    <td>${post.title}</td>
-                    <td>${post.plot ? post.plot : "N/A"}</td>
-                    <td>${post.rated ? post.rated : "N/A"}</td>
-                    <td>${Math.floor(post.runtime/60)+ ":" + (post.runtime%60).toString().padStart(2,'0')}</td>
+            if(data.length){
+
+                let rows = `${data.map(listing => (
+                    `<tr data-id="${listing._id}">
+                    <td>${listing.name}</td>
+                    <td>${listing.room_type} </td>
+                    <td>${listing.address.street}</td>
+                    <td>${listing.summary}<br /><br />
+                    <strong>Accommodates:</strong> ${listing.accommodates}<br />
+                    <strong>Rating:</strong> ${listing.review_scores.review_scores_rating} (${listing.number_of_reviews} Reviews)
+                    </td>
                 </tr>`
-            )).join('')}`;
-            
-            //populate table with rows
-            document.querySelector('#moviesTable tbody').innerHTML = row;
-            
-            //update the current page number for the pagination
-            document.querySelector('#current-page').innerHTML = pageNumber;
-            
-            //for each row on the current table, check for click event
-            //if clicked modal will pop up with more details on clicked movie
-            document.querySelectorAll('#moviesTable tbody tr').forEach(row => {
-                row.addEventListener("click", c =>{
-                    let clicked = row.getAttribute("data-id");
-                    
-                    fetch(`${window.location.href}api/movies/${clicked}`)
-                    .then(res => res.json())
-                    .then(data => {
-                    
-                        document.querySelector("#detailsModal .modal-title").innerHTML = data.title;
+                )).join('')}`;
 
-                        //format data for modal with movie data
-                        let movieDesc = `
-                            <img class="img-fluid w-100" src=${data.poster}><br><br>
-                            <strong>Directed By:</strong> ${data.directors.join(', ')}<br><br>
-                            <p>${data.fullplot ? data.fullplot : "N/A"}</p>
-                            <strong>Cast:</strong> ${data.cast ? data.cast.join(', ') : "N/A"}<br><br>
-                            <strong>Awards:</strong> ${data.awards.text}<br>
-                            <strong>IMDB Rating:</strong> ${data.imdb.rating} (${data.imdb.votes} votes)
-                        `;
+                document.querySelector("#listingsTable tbody").innerHTML = rows;
 
-                        document.querySelector("#detailsModal .modal-body").innerHTML = movieDesc;
+                document.querySelectorAll('#listingsTable tbody tr').forEach((row) => {
+                    row.addEventListener('click', (e) => {
+                        let clickedId = row.getAttribute('data-id');
 
-                        let modal = new bootstrap.Modal(document.getElementById("detailsModal"), {
-                            backdrop: "static",
-                            keyboard: false,
-                            focus: true,
+                        fetch(`http://localhost:8080/api/listings/${clickedId}`).then(res => res.json()).then(data => {
+                            document.querySelector("#detailsModal .modal-title").innerHTML = data.name;
+
+                            let body = `
+                                <img id="photo" onerror="this.onerror=null;this.src = 'https://placehold.co/600x400?text=Photo+Not+Available'" class="img-fluid w-100" src="${data.images.picture_url}" /><br /><br />
+                                ${data.neighborhood_overview && data.neighborhood_overview + "<br /><br />"}
+                                <strong>Price:</strong> ${data.price.toFixed(2)}<br />
+                                <strong>Room:</strong> ${data.room_type}<br />
+                                <strong>Bed:</strong> ${data.bed_type} (${data.beds})<br /><br />
+                            `;
+
+                            document.querySelector("#detailsModal .modal-body").innerHTML = body;
+                            new bootstrap.Modal(document.getElementById('detailsModal')).show();
                         });
 
-                        modal.show();
                     });
-
                 });
-            });
+
+                document.querySelector("#current-page").innerHTML = page;
+            }else{
+                if(page > 1){ 
+                    page--; 
+                }else{
+                    document.querySelector("#listingsTable tbody").innerHTML = `<tr><td colspan="4"><strong> No data available</td></tr>`;
+                }
+            }
+        }).catch(err=>{
+            if(page > 1){ 
+                page--; 
+            }else{
+                document.querySelector("#listingsTable tbody").innerHTML = `<tr><td colspan="4"><strong> No data available</td></tr>`;
+            }
         });
+
 }
 
-// Button that will direct to the previous page
-function previousButton(){
-    document.getElementById('previous-page')
-    .addEventListener("click", c =>{
-        if (pageNumber === 1){
-            loadMovieData();
-        } else{
-            pageNumber = pageNumber - 1;
-            loadMovieData();
+// Execute when the DOM is 'ready'
+document.addEventListener('DOMContentLoaded', function () {
+
+    loadListingData();
+
+    document.querySelector(".pagination #previous-page").addEventListener("click", function (e) {
+        if (page > 1) {
+            page--;
+            loadListingData();
         }
     });
-}
 
-// Button that will direct to the next page
-function nextButton(){
-    document.getElementById('next-page')
-    .addEventListener("click", c =>{
-        pageNumber = pageNumber + 1;
-        loadMovieData();
+    document.querySelector(".pagination #next-page").addEventListener("click", function (e) {
+        page++;
+        loadListingData();
     });
-}
 
-// Button that will direct to specific title
-function searchForm(){
-    document.querySelector("#searchForm").addEventListener('submit', event => {
+    document.querySelector('#searchForm').addEventListener('submit', (event) => {
         // prevent the form from from 'officially' submitting
         event.preventDefault();
-        // populate the posts table with the title value
-        loadMovieData(document.querySelector("#title").value);
+        searchName = document.querySelector('#name').value;
+        page = 1;
+        loadListingData();
     });
-}
 
-// Button that will clear the search bar
-function clearForm(){
-    document.getElementById("clearForm").addEventListener("click", function(){
-        document.getElementById("title").value = "";
-        // populate the posts table with the title value
-        loadMovieData();
-    })
-}
+    document.querySelector("#clearForm").addEventListener("click", (event) => {
+        document.querySelector('#name').value = "";
+        searchName = null;
+        loadListingData();
+    });
 
-document.addEventListener('DOMContentLoaded', function() {
-    loadMovieData();
-    previousButton();
-    nextButton();
-    searchForm();
-    clearForm();
-})
+});

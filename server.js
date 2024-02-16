@@ -19,10 +19,10 @@ db.initialize(process.env.MONGODB_CONN_STRING)
   .then(() => {
     console.log('Connected to MongoDB');
 
-    app.use(express.static('main'));
+    app.use(express.static(path.join(__dirname, 'views')));
 
     app.get('/', (req, res) => {
-      res.json({ message: 'API Listening' });
+      res.sendFile(path.join(__dirname, 'views', 'index.html'));
     });
 
     app.post('/api/movies', async (req, res) => {

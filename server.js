@@ -15,7 +15,7 @@ app.use(cors());
 app.use(express.static('main'));
 app.use("/main/js/", express.static(__dirname + '/main/js'));
 
-const HTTP_PORT = process.env.PORT || 3000;
+const HTTP_PORT = process.env.PORT || 8080;
 
 db.initialize(process.env.MONGODB_CONN_STRING).then(()=>{
   app.listen(HTTP_PORT, ()=>{

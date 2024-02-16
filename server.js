@@ -9,18 +9,14 @@ require('dotenv').config();
 const db = new MoviesDB();
 
 const app = express();
-// Add support for incoming JSON entities
 app.use(bodyParser.json());
 app.use(express.json());
-// Add cors
 app.use(cors());
 app.use(express.static('main'));
 app.use("/main/js/", express.static(__dirname + '/main/js'));
 
 const HTTP_PORT = process.env.PORT || 8080;
-// Or use some other port number that you like better
 
-//envoking DB
 db.initialize(process.env.MONGODB_CONN_STRING).then(()=>{
   app.listen(HTTP_PORT, ()=>{
     console.log(`server listening on: ${HTTP_PORT}`);
@@ -29,8 +25,6 @@ db.initialize(process.env.MONGODB_CONN_STRING).then(()=>{
   console.log(err);
 });
 
-// Add new "Movie" document to the collection and return newly created movie object
-// return newly created movie object / fail message error
 app.post('/api/movies', (req,res) =>{
   db.addNewMovie(req.body)
   .then((data) => {
@@ -41,8 +35,6 @@ app.post('/api/movies', (req,res) =>{
   });
 });
 
-// This route will accept numeric query parameters "page", "perPage" and "title" ie:/api/movies?page=1&perPage=5&title=The Avengers
-//return all "Movie" objects for a specific "page" optional filtering by "title"
 app.get('/api/movies', (req,res) =>{
   if (req.query.title){
     db.getAllMovies(req.query.page, req.query.perPage, req.query.title)
@@ -64,8 +56,6 @@ app.get('/api/movies', (req,res) =>{
   }
 });
 
-// This route will accept a parameter that represents the id of the desired object ie: /api/movies/573a1391f29313caabcd956e
-// return a specific "Movie" object to client
 app.get('/api/movies/:id',function(req,res) {
   db.getMovieById(req.params.id)
   .then((movies) => {
@@ -76,8 +66,6 @@ app.get('/api/movies/:id',function(req,res) {
   });
 });
 
-// This route accepts a parameter that represents the id of desired movie object and read the contents of the request body.
-// will use the values to update a specific "Movie" document in the collection and return a success / fail message error to client 
 app.put('/api/movies/:id', (req,res) =>{
   db.updateMovieById(req.body, req.params.id)
   .then((movie) => {
@@ -87,8 +75,7 @@ app.put('/api/movies/:id', (req,res) =>{
     res.status(500).json(err);
   });
 });
-//This route must accept a route parameter that represents the id of desired movie objects
-// will use this value to delete a specific "Movie" document
+
 app.delete('/api/movies/:id', (req,res) =>{
   db.deleteMovieById(req.params.id)
   .then(() => {
@@ -99,7 +86,6 @@ app.delete('/api/movies/:id', (req,res) =>{
   });
 });
 
-// Resource not found (this should be at the end)
 app.use((req, res) => {
   res.status(404).send('Resource not found');
 });

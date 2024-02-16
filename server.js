@@ -1,99 +1,105 @@
 const express = require('express');
+const bodyParser = require('body-parser');
 const cors = require('cors');
-const dotenv = require('dotenv');
-const mongoose = require('mongoose');
+const MoviesDB = require("./modules/moviesDB.js");
+const path = require('path');
 
-const MoviesDB = require('./modules/MoviesDB.js');
-
-dotenv.config();
-
-const app = express();
-const HTTP_PORT = process.env.HTTP_PORT || 3000;
-
-app.use(cors());
-app.use(express.json());
+require('dotenv').config();
 
 const db = new MoviesDB();
 
-db.initialize(process.env.MONGODB_CONN_STRING)
-  .then(() => {
-    console.log('Connected to MongoDB');
+const app = express();
+// Add support for incoming JSON entities
+app.use(bodyParser.json());
+app.use(express.json());
+// Add cors
+app.use(cors());
+app.use(express.static('main'));
+app.use("/main/js/", express.static(__dirname + '/main/js'));
 
-    app.use(express.static(path.join(__dirname, 'views')));
+const HTTP_PORT = process.env.PORT || 8080;
+// Or use some other port number that you like better
 
-    app.get('/', (req, res) => {
-      res.sendFile(path.join(__dirname, 'views', 'index.html'));
-    });
+//envoking DB
+db.initialize(process.env.MONGODB_CONN_STRING).then(()=>{
+  app.listen(HTTP_PORT, ()=>{
+    console.log(`server listening on: ${HTTP_PORT}`);
+  });
+}).catch((err)=>{
+  console.log(err);
+});
 
-    app.post('/api/movies', async (req, res) => {
-      try {
-        const newMovie = await db.addNewMovie(req.body);
-        res.status(201).json(newMovie);
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
-      }
-    });
-
-    app.get('/api/movies', async (req, res) => {
-      try {
-        const page = req.query.page || 1;
-        const perPage = req.query.perPage || 10;
-        const title = req.query.title || null;
-        const movies = await db.getAllMovies(page, perPage, title);
-        res.json(movies);
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
-      }
-    });
-
-    app.get('/api/movies/:id', async (req, res) => {
-      try {
-        const movie = await db.getMovieById(req.params.id);
-        if (movie) {
-          res.json(movie);
-        } else {
-          res.status(404).json({ error: 'Movie not found' });
-        }
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
-      }
-    });
-
-    app.put('/api/movies/:id', async (req, res) => {
-      try {
-        const updatedMovie = await db.updateMovieById(req.body, req.params.id);
-        if (updatedMovie) {
-          res.json(updatedMovie);
-        } else {
-          res.status(404).json({ error: 'Movie not found' });
-        }
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
-      }
-    });
-
-    app.delete('/api/movies/:id', async (req, res) => {
-      try {
-        const result = await db.deleteMovieById(req.params.id);
-        if (result) {
-          res.status(204).send();
-        } else {
-          res.status(404).json({ error: 'Movie not found' });
-        }
-      } catch (error) {
-        console.error(error);
-        res.status(500).json({ error: 'Internal Server Error' });
-      }
-    });
-
-    app.listen(HTTP_PORT, () => {
-      console.log(`Server listening on port: ${HTTP_PORT}`);
-    });
+// Add new "Movie" document to the collection and return newly created movie object
+// return newly created movie object / fail message error
+app.post('/api/movies', (req,res) =>{
+  db.addNewMovie(req.body)
+  .then((data) => {
+      res.status(201).json(data);
   })
   .catch((err) => {
-    console.error('Error connecting to MongoDB:', err);
+    res.status(400).json(err);
   });
+});
+
+// This route will accept numeric query parameters "page", "perPage" and "title" ie:/api/movies?page=1&perPage=5&title=The Avengers
+//return all "Movie" objects for a specific "page" optional filtering by "title"
+app.get('/api/movies', (req,res) =>{
+  if (req.query.title){
+    db.getAllMovies(req.query.page, req.query.perPage, req.query.title)
+    .then(movies => {
+        res.status(200).json(movies);
+    })
+    .catch((err) => {
+      res.status(400).json(err);
+    });
+  } 
+  else {
+    db.getAllMovies(req.query.page, req.query.perPage)
+    .then(movies => {
+        res.status(200).json(movies);
+    })
+    .catch((err) => {
+      res.status(400).json(err);
+    });
+  }
+});
+
+// This route will accept a parameter that represents the id of the desired object ie: /api/movies/573a1391f29313caabcd956e
+// return a specific "Movie" object to client
+app.get('/api/movies/:id',function(req,res) {
+  db.getMovieById(req.params.id)
+  .then((movies) => {
+      res.status(200).json(movies);
+  })
+  .catch((err) => {
+    res.status(400).json(err);
+  });
+});
+
+// This route accepts a parameter that represents the id of desired movie object and read the contents of the request body.
+// will use the values to update a specific "Movie" document in the collection and return a success / fail message error to client 
+app.put('/api/movies/:id', (req,res) =>{
+  db.updateMovieById(req.body, req.params.id)
+  .then((movie) => {
+      res.status(200).json(movie);
+  })
+  .catch((err) => {
+    res.status(500).json(err);
+  });
+});
+//This route must accept a route parameter that represents the id of desired movie objects
+// will use this value to delete a specific "Movie" document
+app.delete('/api/movies/:id', (req,res) =>{
+  db.deleteMovieById(req.params.id)
+  .then(() => {
+    res.status(200).json('sale ${req.params.id} successfully deleted');
+  })
+  .catch((err) => {
+    res.status(404).json(err);
+  });
+});
+
+// Resource not found (this should be at the end)
+app.use((req, res) => {
+  res.status(404).send('Resource not found');
+});

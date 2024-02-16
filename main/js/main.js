@@ -7,9 +7,9 @@ function loadListingData() {
     let url = "";
 
     if (searchName) {
-        url = `http://localhost:8080/api/listings?page=${page}&perPage=${perPage}&name=${searchName}`
+        url = `http://localhost:8080/api/movies?page=${page}&perPage=${perPage}&title=${searchName}`
     } else {
-        url = `http://localhost:8080/api/listings?page=${page}&perPage=${perPage}`;
+        url = `http://localhost:8080/api/movies?page=${page}&perPage=${perPage}`;
     }
 
     fetch(url)
@@ -20,15 +20,13 @@ function loadListingData() {
 
             if(data.length){
 
-                let rows = `${data.map(listing => (
-                    `<tr data-id="${listing._id}">
-                    <td>${listing.name}</td>
-                    <td>${listing.room_type} </td>
-                    <td>${listing.address.street}</td>
-                    <td>${listing.summary}<br /><br />
-                    <strong>Accommodates:</strong> ${listing.accommodates}<br />
-                    <strong>Rating:</strong> ${listing.review_scores.review_scores_rating} (${listing.number_of_reviews} Reviews)
-                    </td>
+                let rows = `${data.map(post => (
+                    `<tr data-id=${post._id}>
+                    <td>${post.year}</td>
+                    <td>${post.title}</td>
+                    <td>${post.plot ? post.plot : "N/A"}</td>
+                    <td>${post.rated ? post.rated : "N/A"}</td>
+                    <td>${Math.floor(post.runtime/60)+ ":" + (post.runtime%60).toString().padStart(2,'0')}</td>
                 </tr>`
                 )).join('')}`;
 
@@ -38,15 +36,16 @@ function loadListingData() {
                     row.addEventListener('click', (e) => {
                         let clickedId = row.getAttribute('data-id');
 
-                        fetch(`http://localhost:8080/api/listings/${clickedId}`).then(res => res.json()).then(data => {
+                        fetch(`http://localhost:8080/api/movies/${clickedId}`).then(res => res.json()).then(data => {
                             document.querySelector("#detailsModal .modal-title").innerHTML = data.name;
 
                             let body = `
-                                <img id="photo" onerror="this.onerror=null;this.src = 'https://placehold.co/600x400?text=Photo+Not+Available'" class="img-fluid w-100" src="${data.images.picture_url}" /><br /><br />
-                                ${data.neighborhood_overview && data.neighborhood_overview + "<br /><br />"}
-                                <strong>Price:</strong> ${data.price.toFixed(2)}<br />
-                                <strong>Room:</strong> ${data.room_type}<br />
-                                <strong>Bed:</strong> ${data.bed_type} (${data.beds})<br /><br />
+                                <img class="img-fluid w-100" src=${data.poster}><br><br>
+                                <strong>Directed By:</strong> ${data.directors.join(', ')}<br><br>
+                                <p>${data.fullplot ? data.fullplot : "N/A"}</p>
+                                <strong>Cast:</strong> ${data.cast ? data.cast.join(', ') : "N/A"}<br><br>
+                                <strong>Awards:</strong> ${data.awards.text}<br>
+                                <strong>IMDB Rating:</strong> ${data.imdb.rating} (${data.imdb.votes} votes)
                             `;
 
                             document.querySelector("#detailsModal .modal-body").innerHTML = body;
@@ -71,7 +70,6 @@ function loadListingData() {
                 document.querySelector("#listingsTable tbody").innerHTML = `<tr><td colspan="4"><strong> No data available</td></tr>`;
             }
         });
-
 }
 
 // Execute when the DOM is 'ready'
